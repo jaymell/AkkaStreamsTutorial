@@ -21,7 +21,17 @@ fun main(args: Array<String>) {
         .scan(BigInteger.ONE) { acc, next ->
             acc.multiply(BigInteger.valueOf(next.toLong()))
         }
-    val result: CompletionStage<IOResult> = factorials
-        .map{ ByteString.fromString(it.toString() + "\n") }
-        .runWith(FileIO.toPath(Paths.get("factorials.txt")), materializer)
+    // instead of this:
+//    val result: CompletionStage<IOResult> = factorials
+//        .map{ ByteString.fromString(it.toString() + "\n") }
+//        .runWith(FileIO.toPath(Paths.get("factorials.txt")), materializer)
+
+    // make a reusable sink:
+    fun lineSink(filename: String): Sink<String, CompletionStage<IOResult>> {
+        return Flow.of(String::class.java)
+            .map{ ByteString.fromString(it.toString() + "\n") }
+            .toMat(FileIO.toPath(Paths.get(filename)), Keep.right())
+    }
+
+    factorials.map(BigInteger::toString).runWith(lineSink("factorial2.txt"), materializer)
 }
